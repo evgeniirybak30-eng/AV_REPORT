@@ -84,16 +84,9 @@ button.secondary{
   background:#eee;
   color:black;
 }
-.note{
-  margin-top:10px;
-  font-size:13px;
-  color:#666;
-  line-height:1.4;
-}
 .status{
-  margin-top:12px;
+  margin-top:10px;
   font-size:14px;
-  color:#333;
 }
 @media(max-width:700px){
   .grid{grid-template-columns:1fr;}
@@ -140,13 +133,13 @@ button.secondary{
 <div class="card">
   <h2>Pre-Shift Checklist</h2>
   <label class="check"><input id="pre1" type="checkbox"><span>Production Manager Call Completed</span></label>
-  <label class="check"><input id="pre2" type="checkbox"><span>Additional Equipment &amp; Labor Verified</span></label>
+  <label class="check"><input id="pre2" type="checkbox"><span>Additional Equipment & Labor Verified</span></label>
   <label class="check"><input id="pre3" type="checkbox"><span>Time Target Accepted</span></label>
 </div>
 
 <div class="card">
   <h2>Post-Shift Check</h2>
-  <label class="check"><input id="post1" type="checkbox"><span>People Report (Part-Time &amp; Contractors)</span></label>
+  <label class="check"><input id="post1" type="checkbox"><span>People Report (Part-Time & Contractors)</span></label>
   <label class="check"><input id="post2" type="checkbox"><span>Pull Sheet (Equipment Check)</span></label>
 </div>
 
@@ -167,10 +160,8 @@ button.secondary{
 </div>
 
 <div class="card">
-  <button onclick="generatePDF()">GENERATE PDF FILE</button>
-  <button class="secondary" onclick="openReport()">OPEN PRINT VIEW</button>
+  <button onclick="generatePDF()">GENERATE PDF</button>
   <button class="secondary" onclick="clearForm()">CLEAR FORM</button>
-  <div class="note">GENERATE PDF FILE downloads a real PDF. OPEN PRINT VIEW keeps the old print version as backup.</div>
   <div class="status" id="status"></div>
 </div>
 
@@ -185,165 +176,88 @@ function chk(id){
   return document.getElementById(id).checked ? "Yes" : "-";
 }
 
-function fileNameFromProject(project){
-  const clean = (project || "").trim().replace(/[^a-zA-Z0-9_-]+/g, "_").replace(/^_+|_+$/g, "");
-  return (clean || "project_report") + ".pdf";
+function clean(text){
+  return String(text || "")
+    .trim()
+    .replace(/[^a-zA-Z0-9_-]+/g,"_")
+    .replace(/^_+|_+$/g,"");
+}
+
+function fileName(){
+  const project = clean(document.getElementById("projectNumber").value);
+  const lead = clean(document.getElementById("leadName").value);
+
+  if(project && lead) return project + "_" + lead + ".pdf";
+  if(project) return project + ".pdf";
+  if(lead) return lead + ".pdf";
+  return "shift_report.pdf";
 }
 
 function generatePDF(){
+
   const status = document.getElementById("status");
-  status.textContent = "";
 
   if (!window.jspdf || !window.jspdf.jsPDF) {
-    status.textContent = "PDF library did not load. Please open the file while connected to the internet.";
+    status.textContent = "PDF library not loaded (need internet)";
     return;
   }
 
   const { jsPDF } = window.jspdf;
   const doc = new jsPDF({ unit: "pt", format: "a4" });
 
-  const project = val("projectNumber");
-  const fileName = fileNameFromProject(project);
-  const notes = val("notes");
   let y = 50;
 
-  function line(text, size=12, gap=20){
-    doc.setFont("helvetica", "normal");
+  function line(text,size=12,gap=20){
     doc.setFontSize(size);
-    const wrapped = doc.splitTextToSize(String(text), 500);
-    doc.text(wrapped, 50, y);
-    y += (wrapped.length * (size + 4)) + gap - size;
+    const wrapped = doc.splitTextToSize(String(text),500);
+    doc.text(wrapped,50,y);
+    y += (wrapped.length*(size+4))+gap-size;
   }
 
-  doc.setFont("helvetica", "bold");
   doc.setFontSize(22);
-  doc.text("AV TEAM LEAD - SHIFT REPORT", 297.5, y, { align: "center" });
-  y += 35;
+  doc.text("AV TEAM LEAD - SHIFT REPORT",297.5,y,{align:"center"});
+  y+=40;
 
-  doc.setFont("helvetica", "bold");
   doc.setFontSize(14);
-  doc.text("Shift Details", 50, y);
-  y += 22;
+  doc.text("Shift Details",50,y);
+  y+=20;
 
-  line("Project Number: " + project);
-  line("Lead Name: " + val("leadName"));
-  line("Date: " + val("date"));
-  line("Target Time Met: " + val("targetTime"));
+  line("Project Number: "+val("projectNumber"));
+  line("Lead Name: "+val("leadName"));
+  line("Date: "+val("date"));
+  line("Target Time Met: "+val("targetTime"));
 
-  doc.setFont("helvetica", "bold");
   doc.setFontSize(14);
-  doc.text("Pre-Shift Checklist", 50, y);
-  y += 22;
+  doc.text("Pre-Shift Checklist",50,y);
+  y+=20;
 
-  line("Production Manager Call Completed: " + chk("pre1"));
-  line("Additional Equipment & Labor Verified: " + chk("pre2"));
-  line("Time Target Accepted: " + chk("pre3"));
+  line("Production Manager Call Completed: "+chk("pre1"));
+  line("Additional Equipment & Labor Verified: "+chk("pre2"));
+  line("Time Target Accepted: "+chk("pre3"));
 
-  doc.setFont("helvetica", "bold");
   doc.setFontSize(14);
-  doc.text("Post-Shift Check", 50, y);
-  y += 22;
+  doc.text("Post-Shift Check",50,y);
+  y+=20;
 
-  line("People Report (Part-Time & Contractors): " + chk("post1"));
-  line("Pull Sheet (Equipment Check): " + chk("post2"));
+  line("People Report: "+chk("post1"));
+  line("Pull Sheet: "+chk("post2"));
 
-  doc.setFont("helvetica", "bold");
   doc.setFontSize(14);
-  doc.text("Client Satisfaction Score (1-10)", 50, y);
-  y += 22;
+  doc.text("Client Satisfaction",50,y);
+  y+=20;
 
   line(val("score"));
 
-  doc.setFont("helvetica", "bold");
   doc.setFontSize(14);
-  doc.text("Notes", 50, y);
-  y += 22;
+  doc.text("Notes",50,y);
+  y+=20;
 
-  line(notes || "-", 12, 14);
+  line(val("notes"));
 
-  doc.save(fileName);
-  status.textContent = "PDF file downloaded: " + fileName;
-}
+  const name = fileName();
+  doc.save(name);
 
-function openReport(){
-  const project = val("projectNumber");
-  const suggestedName = fileNameFromProject(project);
-  const notes = (val("notes") || "-").replace(/\n/g, "<br>");
-
-  const html = `
-<!DOCTYPE html>
-<html>
-<head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>${suggestedName}</title>
-<style>
-body{font-family:Arial,sans-serif;margin:0;background:#fff;color:#111}
-.toolbar{
-  position:sticky;top:0;background:#fff;border-bottom:1px solid #ddd;
-  padding:12px;display:flex;gap:10px;justify-content:center;flex-wrap:wrap
-}
-.toolbar button{
-  border:none;border-radius:10px;padding:12px 14px;font-size:15px;
-  font-weight:700;background:#000;color:#fff
-}
-.sheet{max-width:820px;margin:0 auto;padding:28px 22px 40px}
-h1{text-align:center;margin:0 0 20px}
-.section{margin-top:20px;line-height:1.5}
-@media print{
-  .toolbar{display:none !important}
-  .sheet{padding:0}
-}
-</style>
-</head>
-<body>
-<div class="toolbar">
-  <button onclick="window.print()">PRINT / SAVE PDF</button>
-</div>
-
-<div class="sheet">
-  <h1>AV TEAM LEAD - SHIFT REPORT</h1>
-
-  <div class="section">
-    <b>Project Number:</b> ${project}<br>
-    <b>Lead Name:</b> ${val("leadName")}<br>
-    <b>Date:</b> ${val("date")}<br>
-    <b>Target Time Met:</b> ${val("targetTime")}<br>
-  </div>
-
-  <div class="section">
-    <h3>Pre-Shift Checklist</h3>
-    Production Manager Call Completed: ${chk("pre1")}<br>
-    Additional Equipment &amp; Labor Verified: ${chk("pre2")}<br>
-    Time Target Accepted: ${chk("pre3")}<br>
-  </div>
-
-  <div class="section">
-    <h3>Post-Shift Check</h3>
-    People Report: ${chk("post1")}<br>
-    Pull Sheet: ${chk("post2")}<br>
-  </div>
-
-  <div class="section">
-    <h3>Client Satisfaction</h3>
-    ${val("score")}
-  </div>
-
-  <div class="section">
-    <h3>Notes</h3>
-    ${notes}
-  </div>
-</div>
-</body>
-</html>`;
-
-  const win = window.open("", "_blank");
-  if (!win) {
-    alert("Popup blocked. Please allow popups for this page.");
-    return;
-  }
-  win.document.write(html);
-  win.document.close();
+  status.textContent = "PDF saved: " + name;
 }
 
 function clearForm(){
