@@ -4,6 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>AV Team Lead - Shift Report</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 
 <style>
 :root{
@@ -89,6 +90,11 @@ button.secondary{
   color:#666;
   line-height:1.4;
 }
+.status{
+  margin-top:12px;
+  font-size:14px;
+  color:#333;
+}
 @media(max-width:700px){
   .grid{grid-template-columns:1fr;}
 }
@@ -161,9 +167,11 @@ button.secondary{
 </div>
 
 <div class="card">
-  <button onclick="openReport()">OPEN PRINT VIEW / SAVE PDF</button>
+  <button onclick="generatePDF()">GENERATE PDF FILE</button>
+  <button class="secondary" onclick="openReport()">OPEN PRINT VIEW</button>
   <button class="secondary" onclick="clearForm()">CLEAR FORM</button>
-  <div class="note">On phone or computer: press OPEN PRINT VIEW / SAVE PDF, then in the new page press PRINT / SAVE PDF.</div>
+  <div class="note">GENERATE PDF FILE downloads a real PDF. OPEN PRINT VIEW keeps the old print version as backup.</div>
+  <div class="status" id="status"></div>
 </div>
 
 </div>
@@ -171,12 +179,6 @@ button.secondary{
 <script>
 function val(id){
   return document.getElementById(id).value || "-";
-}
-
-function esc(text){
-  return String(text || "").replace(/[&<>"]/g, function(m){
-    return {"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[m];
-  });
 }
 
 function chk(id){
@@ -188,10 +190,85 @@ function fileNameFromProject(project){
   return (clean || "project_report") + ".pdf";
 }
 
+function generatePDF(){
+  const status = document.getElementById("status");
+  status.textContent = "";
+
+  if (!window.jspdf || !window.jspdf.jsPDF) {
+    status.textContent = "PDF library did not load. Please open the file while connected to the internet.";
+    return;
+  }
+
+  const { jsPDF } = window.jspdf;
+  const doc = new jsPDF({ unit: "pt", format: "a4" });
+
+  const project = val("projectNumber");
+  const fileName = fileNameFromProject(project);
+  const notes = val("notes");
+  let y = 50;
+
+  function line(text, size=12, gap=20){
+    doc.setFont("helvetica", "normal");
+    doc.setFontSize(size);
+    const wrapped = doc.splitTextToSize(String(text), 500);
+    doc.text(wrapped, 50, y);
+    y += (wrapped.length * (size + 4)) + gap - size;
+  }
+
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(22);
+  doc.text("AV TEAM LEAD - SHIFT REPORT", 297.5, y, { align: "center" });
+  y += 35;
+
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(14);
+  doc.text("Shift Details", 50, y);
+  y += 22;
+
+  line("Project Number: " + project);
+  line("Lead Name: " + val("leadName"));
+  line("Date: " + val("date"));
+  line("Target Time Met: " + val("targetTime"));
+
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(14);
+  doc.text("Pre-Shift Checklist", 50, y);
+  y += 22;
+
+  line("Production Manager Call Completed: " + chk("pre1"));
+  line("Additional Equipment & Labor Verified: " + chk("pre2"));
+  line("Time Target Accepted: " + chk("pre3"));
+
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(14);
+  doc.text("Post-Shift Check", 50, y);
+  y += 22;
+
+  line("People Report (Part-Time & Contractors): " + chk("post1"));
+  line("Pull Sheet (Equipment Check): " + chk("post2"));
+
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(14);
+  doc.text("Client Satisfaction Score (1-10)", 50, y);
+  y += 22;
+
+  line(val("score"));
+
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(14);
+  doc.text("Notes", 50, y);
+  y += 22;
+
+  line(notes || "-", 12, 14);
+
+  doc.save(fileName);
+  status.textContent = "PDF file downloaded: " + fileName;
+}
+
 function openReport(){
   const project = val("projectNumber");
   const suggestedName = fileNameFromProject(project);
-  const notes = esc(val("notes")).replace(/\n/g, "<br>");
+  const notes = (val("notes") || "-").replace(/\n/g, "<br>");
 
   const html = `
 <!DOCTYPE html>
@@ -210,13 +287,11 @@ body{font-family:Arial,sans-serif;margin:0;background:#fff;color:#111}
   border:none;border-radius:10px;padding:12px 14px;font-size:15px;
   font-weight:700;background:#000;color:#fff
 }
-.toolbar .secondary{background:#ececef;color:#111;border:1px solid #d5d5da}
-.small{font-size:13px;color:#666;text-align:center;padding:0 12px 12px}
 .sheet{max-width:820px;margin:0 auto;padding:28px 22px 40px}
 h1{text-align:center;margin:0 0 20px}
 .section{margin-top:20px;line-height:1.5}
 @media print{
-  .toolbar,.small{display:none !important}
+  .toolbar{display:none !important}
   .sheet{padding:0}
 }
 </style>
@@ -224,18 +299,16 @@ h1{text-align:center;margin:0 0 20px}
 <body>
 <div class="toolbar">
   <button onclick="window.print()">PRINT / SAVE PDF</button>
-  <button class="secondary" onclick="window.close()">CLOSE</button>
 </div>
-<div class="small">Suggested file name: <b>${suggestedName}</b></div>
 
 <div class="sheet">
   <h1>AV TEAM LEAD - SHIFT REPORT</h1>
 
   <div class="section">
-    <b>Project Number:</b> ${esc(project)}<br>
-    <b>Lead Name:</b> ${esc(val("leadName"))}<br>
-    <b>Date:</b> ${esc(val("date"))}<br>
-    <b>Target Time Met:</b> ${esc(val("targetTime"))}<br>
+    <b>Project Number:</b> ${project}<br>
+    <b>Lead Name:</b> ${val("leadName")}<br>
+    <b>Date:</b> ${val("date")}<br>
+    <b>Target Time Met:</b> ${val("targetTime")}<br>
   </div>
 
   <div class="section">
@@ -253,7 +326,7 @@ h1{text-align:center;margin:0 0 20px}
 
   <div class="section">
     <h3>Client Satisfaction</h3>
-    ${esc(val("score"))}
+    ${val("score")}
   </div>
 
   <div class="section">
@@ -269,7 +342,6 @@ h1{text-align:center;margin:0 0 20px}
     alert("Popup blocked. Please allow popups for this page.");
     return;
   }
-  win.document.open();
   win.document.write(html);
   win.document.close();
 }
